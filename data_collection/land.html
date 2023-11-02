@@ -432,35 +432,43 @@
           }
         });
     
-        const downloadButton = document.getElementById("download-list");
-        downloadButton.addEventListener("click", function() {
-          if (objectDataArray.length > 0) {
-            const username = document.getElementById("username").value;
-            const date = document.getElementById("date").value;
-            const time = document.getElementById("time").value; // Get the time value
-            const dataToDownload = {
-              username: username,
-              date: date,
-              time: time, // Add the time field to the data
-              objects: objectDataArray,
-            };
-            const data = JSON.stringify(dataToDownload, null, 2);
-            const blob = new Blob([data], {
-              type: "application/json",
-            });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
-            const filename = `land_use_${date}_${username}.json`;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-          } else {
-            alert("The object list is empty.");
-          }
-        });
+        
+  const downloadButton = document.getElementById("download-list");
+  downloadButton.addEventListener("click", function() {
+    if (objectDataArray.length > 0) {
+      const username = document.getElementById("username").value;
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value; // Get the time value
+
+      // Create a header row with headers for the CSV columns
+      const header = 'Username, Date, Time, Land Use, Radius, Latitude, Longitude';
+
+      // Create a CSV string for the object data
+      const csvData = objectDataArray.map((object) => {
+        return `${username}, ${date}, ${time}, ${object.land_use}, ${object.radius}, ${object.loc_lat}, ${object.loc_lon}`;
+      }).join('\n');
+
+      // Combine the header and object data
+      const fullCsvData = `${header}\n${csvData}`;
+
+      // Create a Blob with the CSV data
+      const blob = new Blob([fullCsvData], { type: 'text/csv' });
+
+      // Create a download link for the CSV file
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      const filename = `land_use_${date}_${username}.csv`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } else {
+      alert("The object list is empty.");
+    }
+  });
+
     
         manualLocationToggle.click();
       });
