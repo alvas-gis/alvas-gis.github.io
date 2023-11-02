@@ -38,8 +38,7 @@
         border-radius: 10px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
+        flex-direction: column; /* Change the flex direction to column */
         gap: 20px;
       }
 
@@ -109,11 +108,6 @@
         border-radius: 5px;
       }
 
-      .disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-      }
-
       /* Add this CSS to style the entered list items */
       .object-item {
         background-color: #f9f9f9;
@@ -136,6 +130,66 @@
         font-weight: bold;
         margin-right: 5px;
       }
+
+      #get-location {
+        background-color: #007BFF;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #get-location:hover {
+        background-color: #0056b3;
+      }
+
+      #object-entry-form button[type="submit"] {
+        background-color: #007BFF;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #object-entry-form button[type="submit"]:hover {
+        background-color: #0056b3;
+      }
+
+      #manual-location-toggle.disabled {
+        display: none;
+        visibility: hidden;
+      }
+
+      /* Style for the object name checkboxes */
+      #object-name input[type="checkbox"] {
+        margin-right: 5px;
+      }
+      #download-list {
+  background-color: #0074d9; /* Background color */
+  color: #fff; /* Text color */
+  border: none; /* Remove button border */
+  padding: 10px 20px; /* Padding to make the button larger */
+  cursor: pointer; /* Change cursor on hover */
+  border-radius: 5px; /* Rounded corners */
+  font-size: 16px; /* Font size */
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  margin: 10px 0; /* Margin around the button */
+  transition: background-color 0.3s, color 0.3s; /* Smooth transition on hover */
+}
+
+#download-list:hover {
+  background-color: #0056b3; /* Change background color on hover */
+}
+
+
     </style>
   </head>
   <body>
@@ -143,13 +197,7 @@
       <h1>QGIS Mapping</h1>
     </header>
     <main>
-      <div id="object-list">
-        <h2>Entered List</h2>
-        <ul id="object-names">
-          <!-- Object names and counts will be displayed here -->
-        </ul>
-      </div>
-<!--       <div id="map"></div> -->
+      <div id="map"></div>
       <form id="object-entry-form">
         <h2>Enter Information</h2>
         <div class="form-group">
@@ -165,21 +213,39 @@
           <input type="text" id="time" readonly>
         </div>
         <div class="form-group">
-          <label for="object-name">Object Name:</label>
-          <input type="text" id="object-name" required>
-        </div>
-        <div class="form-group">
-          <label for="object-count">Count:</label>
-          <input type="number" id="object-count" required>
-        </div>
-        <div class="form-group">
           <label for="location">Location:</label>
           <input type="text" id="location" readonly>
+          <button type="button" id="get-location">Get Location</button>
         </div>
-        <button type="button" id="manual-location-toggle" class="disabled">Manual Location Mode (Disabled)</button>
-        <button type="button" id="get-location">Get Location</button>
+        <div class="form-group">
+          <label for="object-name">Land used as:</label>
+          <!-- <div id="object-name">
+            <input type="checkbox" name="object" value="Option 1" id="option1">
+            <label for="option1">Option 1</label>
+            <input type="checkbox" name="object" value="Option 2" id="option2">
+            <label for="option2">Option 2</label>
+            <input type="checkbox" name="object" value="Option 3" id="option3">
+            <label for="option3">Option 3</label>
+            
+          </div> -->
+          <div id="object-name">
+            <!-- Checkboxes will be dynamically generated here -->
+          </div>
+          
+        </div>
+        <div class="form-group">
+          <label for="object-count">Radius in meter(m):</label>
+          <input type="number" id="object-count" required>
+        </div>
+        <button id="manual-location-toggle">Toggle Manual Location</button>
         <button type="submit">Submit</button>
       </form>
+      <div id="object-list">
+        <h2>Entered List</h2>
+        <ul id="object-names">
+          <!-- Object names and counts will be displayed here -->
+        </ul>
+      </div>
     </main>
     <button id="download-list">Download List</button>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -192,7 +258,6 @@
         document.getElementById("username").value = username;
         document.getElementById("date").value = date;
         const objectEntryForm = document.getElementById("object-entry-form");
-        const objectNameInput = document.getElementById("object-name");
         const objectCountInput = document.getElementById("object-count");
         const locationInput = document.getElementById("location");
         const objectList = document.getElementById("object-names");
@@ -206,7 +271,7 @@
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
         }).addTo(map);
-
+    
         function getCurrentTime() {
           const now = new Date();
           const hours = now.getHours().toString().padStart(2, "0");
@@ -214,76 +279,97 @@
           const timeString = `${hours}:${minutes}`;
           return timeString;
         }
+    
         // Update the time input every second
         setInterval(function() {
           const currentTime = getCurrentTime();
           timeInput.value = currentTime;
         }, 1000);
         timeInput.value = getCurrentTime();
-
+    
+        function deleteObject(index) {
+          objectDataArray.splice(index, 1); // Remove the object at the specified index
+          updateObjectList();
+          saveObjectDataToStorage();
+        }
+    
+        // Update the object list with delete buttons
         function updateObjectList() {
           objectList.innerHTML = "";
-          objectDataArray.forEach(function(objectData) {
+          objectDataArray.forEach(function(objectData, index) {
             const listItem = document.createElement("li");
             listItem.classList.add("object-item");
             listItem.innerHTML = `
-            
-											<div class="object-details">
-												<div class="object-info">
-													<span class="object-property">Name:</span> ${objectData.name}
-                
-												</div>
-												<div class="object-info">
-													<span class="object-property">Count:</span> ${objectData.count}
-                
-												</div>
-												<div class="object-info">
-													<span class="object-property">Location:</span> ${objectData.location}
-                
-												</div>
-												<div class="object-info">
-													<span class="object-property">Time:</span> ${objectData.time}
-                
-												</div>
-											</div>
-        `;
+              <div class="object-details">
+                <div class="object-info">
+                  <span class="object-property">Land used as:</span> ${objectData.land_use}
+                </div>
+                <div class="object-info">
+                  <span class="object-property">Radius:</span> ${objectData.radius}
+                </div>
+                <div class="object-info">
+                  <span class="object-property">Location:</span> ${objectData.location}
+                </div>
+                <div class="object-info">
+                  <span class="object-property">Time:</span> ${objectData.time}
+                </div>
+              </div>
+              <button class="delete-button" data-index="${index}">Delete</button> <!-- Add a delete button -->
+            `;
             objectList.appendChild(listItem);
           });
+    
+          // Add event listeners to delete buttons
+          const deleteButtons = document.querySelectorAll(".delete-button");
+          deleteButtons.forEach((button) => {
+            button.addEventListener("click", (event) => {
+              const index = event.currentTarget.getAttribute("data-index");
+              deleteObject(index);
+            });
+          });
         }
-
+    
         function saveObjectDataToStorage() {
           localStorage.setItem("objectDataArray", JSON.stringify(objectDataArray));
         }
-
-        function addObjectData(objectName, objectCount, location) {
+    
+        function addObjectData(objectNames, objectCount, location) {
           const currentTime = getCurrentTime(); // Get current time
-          const objectData = {
-            name: objectName,
-            count: objectCount,
-            location: location,
-            time: currentTime, // Store the current time along with the object data
-          };
-          objectDataArray.push(objectData);
+          objectNames.forEach((objectName) => {
+            const objectData = {
+              land_use: objectName,
+              radius: objectCount,
+              location: location,
+              time: currentTime, // Store the current time along with the object data
+            };
+            objectDataArray.push(objectData);
+          });
           updateObjectList();
           saveObjectDataToStorage();
-          objectNameInput.value = "";
           objectCountInput.value = "";
           locationInput.value = "";
           if (marker) {
             map.removeLayer(marker);
           }
         }
+    
         objectEntryForm.addEventListener("submit", function(event) {
           event.preventDefault();
-          const objectName = objectNameInput.value.trim();
+          const objectNameCheckboxes = document.querySelectorAll("input[name=object]:checked");
+          const selectedObjectNames = [];
+          objectNameCheckboxes.forEach((checkbox) => {
+            selectedObjectNames.push(checkbox.value);
+          });
+    
           const objectCount = objectCountInput.value.trim();
           const location = locationInput.value.trim();
-          if (objectName && objectCount && location) {
-            addObjectData(objectName, objectCount, location);
+          if (selectedObjectNames.length > 0 && objectCount && location) {
+            addObjectData(selectedObjectNames, objectCount, location);
           } else {
-            alert("Please fill in all fields.");
+            alert("Please select at least one object name, and fill in the radius and location fields.");
           }
         });
+    
         getLocationButton.addEventListener("click", () => {
           if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(function(position) {
@@ -300,10 +386,11 @@
             locationInput.value = "Geolocation is not supported in this browser.";
           }
         });
+    
         manualLocationToggle.addEventListener("click", () => {
           isManualLocationMode = !isManualLocationMode;
           if (isManualLocationMode) {
-            manualLocationToggle.textContent = "Manual Location Mode (Enabled)";
+            manualLocationToggle.textContent = "";
             manualLocationToggle.classList.remove("disabled");
           } else {
             manualLocationToggle.textContent = "Manual Location Mode (Disabled)";
@@ -316,6 +403,7 @@
             }
           }
         });
+    
         map.on("click", function(e) {
           if (isManualLocationMode) {
             const latitude = e.latlng.lat.toFixed(6);
@@ -328,6 +416,7 @@
             marker = L.marker([latitude, longitude]).addTo(map);
           }
         });
+    
         const downloadButton = document.getElementById("download-list");
         downloadButton.addEventListener("click", function() {
           if (objectDataArray.length > 0) {
@@ -342,7 +431,7 @@
             };
             const data = JSON.stringify(dataToDownload, null, 2);
             const blob = new Blob([data], {
-              type: "application/json"
+              type: "application/json",
             });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -356,8 +445,37 @@
             alert("The object list is empty.");
           }
         });
+    
         manualLocationToggle.click();
       });
+      document.addEventListener("DOMContentLoaded", function () {
+  const container = document.getElementById("object-name");
+  
+  // Fetch the JSON file
+  fetch("landop.json")
+    .then((response) => response.json())
+    .then((data) => {
+      data.forEach((option) => {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = "object";
+        checkbox.value = option.value;
+        checkbox.id = option.id;
+
+        const label = document.createElement("label");
+        label.htmlFor = option.id;
+        label.textContent = option.value;
+
+        container.appendChild(checkbox);
+        container.appendChild(label);
+      });
+    })
+    .catch((error) => {
+      console.error("Error fetching JSON file:", error);
+    });
+});
+
     </script>
+    
   </body>
-</html>
+  </html>
