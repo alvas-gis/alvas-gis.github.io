@@ -308,7 +308,7 @@
                   <span class="object-property">Radius:</span> ${objectData.radius}
                 </div>
                 <div class="object-info">
-                  <span class="object-property">Location:</span> ${objectData.location}
+                  <span class="object-property">Location:</span> lat:${objectData.loc_lat},lon:${objectData.loc_lon}
                 </div>
                 <div class="object-info">
                   <span class="object-property">Time:</span> ${objectData.time}
@@ -334,24 +334,39 @@
         }
     
         function addObjectData(objectNames, objectCount, location) {
-          const currentTime = getCurrentTime(); // Get current time
-          objectNames.forEach((objectName) => {
-            const objectData = {
-              land_use: objectName,
-              radius: objectCount,
-              location: location,
-              time: currentTime, // Store the current time along with the object data
-            };
-            objectDataArray.push(objectData);
-          });
-          updateObjectList();
-          saveObjectDataToStorage();
-          objectCountInput.value = "";
-          locationInput.value = "";
-          if (marker) {
-            map.removeLayer(marker);
-          }
-        }
+  const currentTime = getCurrentTime();
+
+  // Extract latitude and longitude
+  const locationParts = location.match(/Latitude: (.+), Longitude: (.+)/);
+  if (locationParts) {
+    const loc_lat = locationParts[1];
+    const loc_lon = locationParts[2];
+
+    objectNames.forEach((objectName) => {
+      const objectData = {
+        land_use: objectName,
+        radius: objectCount,
+        loc_lat: loc_lat,
+        loc_lon: loc_lon,
+        time: currentTime,
+      };
+      objectDataArray.push(objectData);
+    });
+
+    updateObjectList();
+    saveObjectDataToStorage();
+    objectCountInput.value = "";
+    locationInput.value = "";
+
+    if (marker) {
+      map.removeLayer(marker);
+    }
+  } else {
+    alert("Invalid location format. Please enter a location in the format 'Latitude: X, Longitude: Y'");
+  }
+}
+
+
     
         objectEntryForm.addEventListener("submit", function(event) {
           event.preventDefault();
@@ -437,7 +452,8 @@
             const a = document.createElement("a");
             a.style.display = "none";
             a.href = url;
-            a.download = "object_list.json";
+            const filename = `land_use_${date}_${username}.json`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
